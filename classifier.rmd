@@ -1,0 +1,410 @@
+---
+title: "Challenge 1"
+author: "Qianmin Hu"
+date: "2/6/2017"
+output: html_document
+---
+
+```{r}
+rm(list=ls())
+load("~/Dropbox/PhDStanford/PhDCoursework/POLISCI355BMachineLearning/Challenge.RData")
+ls()
+names(challenge)
+
+articles<-challenge$articles #create date frame of articles
+text<-levels(articles$Text)[articles$Text] #transform Text from factor to charactor
+term_doc<-challenge$term_doc #create date frame of variable "Fake" and 3000 terms 
+words<-challenge$term_doc[,-1] #create data frame of the given 3000 words (without variable "Fake")
+label<-term_doc$Fake 
+
+```
+
+
+```{r}
+#Find word count for each article
+library(stringi)
+word_count<-stri_count_words(text) #word count of each document
+```
+
+
+```{r}
+## results show that word count for a few documents is very small, such as 4 or 2 or 12. Let's look at these document text
+subset(articles$Text,word_count==2) 
+###this article only has 2 words in its text
+
+##remove almost empty articles
+new_articles<-subset(articles,word_count>20)  
+dim(new_articles) #243 articles with word_count>20 are left 
+
+#redefine data frames created above by removing empty documents
+new_term_doc<-subset(term_doc,word_count>20) 
+new_words<-subset(words,word_count>20) 
+new_label<-subset(label,word_count>20) 
+new_word_count<-subset(word_count,word_count>20)
+
+## Some words in term_doc are meaningless, which might come from mistakes when manipulating the original texts. We will remove "X8220","X8217","X8221","X8212" from variables.
+
+index = grep('X', names(new_words))
+new_words <- subset(new_words, select = -c(index, t, follow, posts, q, ed, op, times, colarossi)) ##ORIGINAL DATASET DOES NOT INCLUDE q, ed
+dim(new_words)
+
+#new_words<-subset(new_words,select=-c(X8220,X8217,X8221,X8212, t, follow, posts))
+```
+
+```{r}
+##Check whether results make sense
+success <-new_words [which (new_words$success == '1'),]
+View(success)
+
+times <- new_words [which(new_words$times == '1'),]
+View(times)
+
+editor <- new_words [which(new_words$editor == '1'),]
+View(editor)
+
+largely <- new_words [which(new_words$largely == '1'),]
+View(largely)
+
+colarossi <- new_words [which(new_words$colarossi == '1'),]
+View(colarossi)
+
+politics <- new_words [which(new_words$colarossi == '1'),]
+View(colarossi)
+
+moral <- new_words [which(new_words$moral == '1'),]
+View(moral)
+
+```
+
+##add additional categories from LIWC to new_words matrix
+```{r}
+new_words <- subset(new_words,select = -c(an,a,the))
+
+#functionword <- c('back',	'onto',	'shortly',	'below',	'upon',	'fully',	'inside',	'via',	'near',	'above',	'within',	'beyond',	'outside',	'toward',	'behind',	'across',	'away',	'around',	'among',	'off',	'under',	'down',	'where',	'into',	'over',	'out',	'up',	'at',	'on',	'in.',	'since',	'why',	'because',	'how',	'somewhat',	'another',	'none', 'well',	'seriously',	'definitely',	'truly',	'her',	'she',	'himself',	'him',	'his',	'he',	'might',	'may',	'must',	'should',	'could',	'would',	'becoming',	'am',	'having',	'let',	'done', 'doing',	'become',	'does',	'being',	'did',	'do',	'been',	'were',	'had',	'will',	'are',	'have',	'has',	'be',	'was',	'is',	'usually',	'often',	'never',	'frequently',	'rarely',	'suddenly',	'eventually',	'ahead', 'finally', 'immediately',	'soon',	'until',	'ever',	'yet',	'already', 'again',	'still',	'then', 'while.', 'during', 'now',	'before',	'after',	'when',	'indeed',	'absolutely',	'u',	'if.',	'anybody',	'somebody',	'anything',	'anyone',	'someone',	'something',	'virtually', 'typically',	'hardly',	'generally',	'somehow',	'mostly',	'apparently',	'probably',	'maybe',	'almost',	'perhaps',	'nearly',	'or',	'rather',	'myself', 'me', 'my',	'i',	'ourselves',	'us',	'our',	'we',	'themselves',	'them',	'their',	'they',	'yourself',	'your',	'you',	'nobody',	'everybody',	'stuff',	'whatever',	'itself',	'whom',	'whose',	'everyone',	'everything',	'thing',	'others',	'things',	'these',	'those',	'other',	'its',	'which',	'what',	'this',	'who',	'it', 'that',	'negative',	'neither',	'nor',	'nothing',	'without',	'no',	'not',	'basically',	'extremely',	'totally',	'essentially',	'unless',	'unlike',	'completely', 'except',	'amid',	'ultimately',	'throughout',	'clearly',	'although',	'particularly',	'especially',	'despite',	'simply',	'along',	'however', 'actually',	'instead',	'really',	'too',	'though',	'whether',	'such',	'through',	'between',	'including',	'here',	'against',	'very', 'only',	'even',	'just',	'also',	'can',	'than',	'so', 'like',	'there',	'about',	'from',	'but', 'by',	'as',	'with',	'for.',	'and', 'of',	'to')
+#functionword1 <- subset(new_words, select = functionword)
+#functionwordcount1 <- apply(functionword1, 1, sum)
+  
+  
+pronoun <- c('another',	'her',	'she',	'himself',	'him',	'his',	'he',	'u',	'anybody',	'somebody',	'anything',	'anyone',	'someone',	'something',	'myself',	'me',	'my',	'i',	'ourselves',	'us',	'our',	'we',	'themselves',	'them',	'their',	'they',	'yourself',	'your',	'you',	'nobody',	'everybody',	'stuff',	'whatever',	'itself',	'whom',	'whose',	'everyone',	'everything',	'thing',	'others',	'things',	'these',	'those',	'other',	'its',	'which',	'what',	'this',	'who',	'it',	'that')
+pronounword1 <- subset(new_words, select = pronoun)
+pronouncount1 <- apply(pronounword1, 1, sum)
+  
+negate <- c('nobody',	'none',	'never',	'negative',	'neither',	'nor',	'nothing',	'without',	'no',	'not')
+negateword1 <-subset(new_words, select = negate)
+negatecount1 <- apply(negateword1,1,sum)
+  
+number <- c('double',	'single',	'once',	'first',	'billions',	'quarter',	'zero',	'twice',	'fourth',	'billionaires',	'dozen',	'billionaire',	'fifth',	'dozens',	'third',	'nine',	'seven',	'hundreds',	'six',	'five',	'half',	'thousands',	'billion',	'second',	'eight',	'millions',	'four',	'three',	'million',	'two',	'one')
+numberword1 <- subset(new_words, select = number)
+numbercount1 <- apply(numberword1, 1, sum)
+
+#diff <- c('apart',	'separate',	'if.',	'or',	'rather',	'others',	'other',	'neither',	'nor',	'without',	'not',	'unless',	'unlike',	'except',	'although',	'despite',	'however',	'actually',	'instead',	'really',	'though',	'whether',	'against',	'than',	'but',	'inequality',	'either',	'opposite',	'alternative',	'difference',	'version',	'else.',	'different')
+#differword1 <-subset(new_words, select = diff)
+#differcount1 <- apply(differword1, 1, sum)
+
+
+
+#posemotion <-c('well',	'definitely',	'truly',	'creating',	'created',	'create',	'creation',	'playing',	'played',	'hoped',	'hoping',	'hopes',	'hope',	'accepted',	'thanks',	'cares',	'liked',	'save',	'shared',	'accept',	'likes',	'thank',	'giving',	'support',	'won',	'care',	'faith',	'entertainment',	'joked',	'festivities',	'joke',	'comedy',	'fun',	'play',	'parties',	'party',	'profits',	'champion',	'credit',	'challenges',	'successful',	'benefits',	'challenge',	'success',	'agree',	'pretty',	'desire',	'dignity',	'accepting',	'perfectly',	'popularity',	'promising',	'excited',	'healthy',	'cheer',	'humor',	'grand',	'comfortable',	'greatest',	'strongly',	'honest',	'respected',	'hero',	'engage',	'amazing',	'devoted',	'safety',	'eager','impression',	'encouraged',	'perfect',	'nice',	'praised',	'shares',	'super',	'engaged',	'interested',	'improve',	'favorite',	'advantage',	'importance',	'fine',	'please',	'interesting',	'strength',	'peaceful',	'grace',	'supporter',	'positive',	'praise',	'optimistic',	'wealth',	'secure',	'supporting',	'surprise',	'approve',	'surprising',	'proud',	'surprised',	'easily',	'happy',	'approved',	'honor',	'greater',	'determined',	'smart',	'favor',	'rich',	'treasury',	'winning',	'benefit',	'agreed',	'fair',	'wealthy',	'freedom',	'peace',	'confidence',	'safe',	'easy',	'helping',	'share',	'ready',	'value',	'promises',	'special',	'love',	'values',	'certain',	'certainly',	'promised',	'opportunity',	'supported',	'trust',	'approval',	'truth',	'promise',	'respect',	'interests',	'supreme',	'agreement',	'strong',	'energy',	'true',	'sure',	'win',	'kind',	'supporters',	'free',	'important',	'interest',	'best',	'popular',	'better',	'great',	'security',	'good',	'intelligence')
+#posemotionword1 <- subset(new_words, select = posemotion)
+#posemotioncount1 <- apply(posemotionword1, 1, sum)
+  
+  
+#negemotion <- c('fought','lied', 'mocked','hate', 'protesting','lying', 'killings','killing', 'kill','killed', 'war','threatening',  'threatened', 'threats','threat', 'violations','bitter', 'blamed','dominated', 'violent','assault', 'argue','fights', 'enemies','anger', 'outrage','weapons', 'argument','hostile', 'battle','fighting', 'attacked','attacking', 'angry', 'aggressive',  'blame', 'argued','torture', 'critical','criticism', 'criticized','attacks','protests','lies','protest','attack','fight','broke','lost','miss', 'lose','lowest','empty','lower','low','missing','losing','failure','failed','resign', 'sad','rejected','hurt','loss','alone','mistake','problems','problem', 'ignored','worry','worse','seriously','defending','defended','defend','fired', 'doubts','uncertainty',  'doubt', 'scared','anxiety', 'risks','scary', 'horrible','guilty', 'terrorists','fears','vulnerable','terrorist','terrorism','worried', 'pressure','avoid','risk','fear','strange','harsh','sick','complained',  'troubling', 'disagree','warner','trouble','terrible','unfair','complaining',  'adversaries', 'harm','victims','damaging','disaster','badly','danger','warning','crazy', 'warned','defeat','damage','poor','difficult','dangerous','violence', 'worst', 'cut','serious', 'wrong','defense', 'bad','fake')
+#negemotionword1 <- subset(new_words, select = negemotion)
+#negemotioncount1 <- apply(negemotionword1, 1, sum)
+  
+  
+anger <- c('fought','lied','mocked','hate','protesting','lying','killings','killing', 'kill','killed', 'war','threatening',  'threatened', 'threats','threat', 'violations','bitter', 'blamed','dominated', 'violent','assault', 'argue',
+             'fights', 'enemies','anger', 'outrage','weapons', 'argument','hostile', 'battle','fighting', 'attacked','attacking', 'angry','aggressive',  'blame', 'argued','torture', 'critical','criticism', 'criticized','attacks', 'protests',
+             'lies', 'protest','attack', 'fight')
+angerword1 <- subset(new_words, select = anger)
+angerwordcount1 <- apply(angerword1, 1, sum)
+  
+sad <- c('broke',  'lost', 'miss','lose', 'lowest','empty', 'lower','low', 'missing','losing', 'failure','failed', 'resign','sad', 'rejected','hurt', 'loss','alone')
+sadword1 <- subset(new_words, select = sad)
+sadwordcount1 <- apply(sadword1, 1, sum)
+  
+  
+  
+discrepancy <- c('must',	'should',	'could',	'would',	'if.',	'rather',	'hoped',	'hoping',	'hopes',	'hope',	'mistake',	'problems',	'problem',	'desire',	'wish',	'lack',	'needs',	'needed',	'wants',	'wanted',	'need',	'want',	'impossible',	'regardless',	'unusual',	'expect',	'expected')
+discrepancyword1 <- subset(new_words, select = discrepancy)
+discrepancycount1 <- apply(discrepancyword1, 1, sum)
+  
+#focuspast <- c('already','stopped', 'born','ended', 'sat','started', 'began','yesterday', 'previously','previous', 'earlier','ago', 'past','former','stayed', 'left', 'placed','done', 'did','been', 'were','had', 'was','created', 'changed', 'picked', 'used','made', 'led','founded', 'added','played', 'fought','ignored', 'lied','mocked', 'broke','lost', 'hoped','accepted', 'liked','shared', 'won', 'supported', 'traveled','fell', 'entered','walked', 'caught','moved', 'ran','grew', 'gone','arrived', 'carried','followed', 'passed','brought', 'sent', 'turned', 'went','came', 'hired','managed', 'learned','written', 'worked', 'wrote', 'died','questioned',  'supposed', 'appeared','seemed', 'needed','wanted', 'fed','finished', 'wore','admitted', 'explained','understood',  'spoken', 'pressed','bought', 'lived','sold', 'viewed','laid', 'informed', 'gotten', 'spokeswoman','joined', 'talked','looked', 'meant','posted', 'denied',  'stood', 'kept','believed', 'spokesman','happened', 'remember','watched', 'named','decided', 'paid','heard', 'showed','felt', 'spent','spoke', 'knew', 'met', 'helped','gave', 'tried','known', 'taken','became', 'saw','held', 'seen', 'voted', 'given','found', 'got','took', 'asked','called', 'told','said','grown','attended', 'earned','organized', 'completed','funded', 'sought','provided', 'included')
+#focuspastword1 <- subset(new_words, select = focuspast)
+#focuspastcount1 <- apply(focuspastword1, 1, sum)
+
+  
+focuspresent <- c('hope','wants', 'now','wait', 'begins','begin', 'start',
+                    'currently', 'present','continues', 'current','continue', 'today','stay', 'sit','open', 'am','become', 'does','do', 'are','have', 'has','be', 'is',
+                    'can', 'picks','pick', 'makes','use', 'make','add', 'worry','hate', 'miss',
+                    'lose', 'hopes','thanks', 'cares','save', 'likes','thank', 'support',
+                    'care', 'worse','perfect', 'shares','share', 'trust','travel', 'puts',
+                    'runs', 'turns','throw', 'enter','moves', 'grow','carry', 'send','walk', 'pass',
+                    'goes', 'leave','comes', 'bring','turn', 'move','run', 'come','go','writes', 'write','learn', 'works','wonder', 'guess','appear', 'appears','seem', 'try','seems', 'lack','needs', 'need','want', 'wear','tells', 'admit','notice', 'forget','tend', 'gives','decide', 'feels','sees', 'realize',
+                    'spend', 'listen','sell', 'talks','describe', 'deny','happens', 'thinks','join', 'believes','hear', 'consider','explain', 'gets','speak', 'looks','knows', 'understand','happen', 'meet','lives', 'takes','means', 'tell','ask', 'mean',
+                    'live', 'feel','find', 'keep','give', 'believe','look', 'says','see', 'take','know', 'think','say', 'get','attend', 'practice','work', 'provides',
+                    'includes', 'provide','include', 'watch','talk')
+focuspresentword1 <- subset(new_words, select = focuspresent)
+focuspresentcount1 <- apply(focuspresentword1, 1, sum)
+
+  
+focusfuture <- c("eventually", "ahead", "soon", "then", "tomorrow", "future", "might", "may", "will", "hoping", "hope", "promising", "gon", "coming", "going", "wish", "wants", "potentially", "potential","expect", "expected", "prepares", "prospect", "predicted", "preparing", "planning", "prepared", "plans", "plan")
+focusfutureword1 <- subset(new_words, select = focusfuture)
+focusfuturecount1 <- apply(focusfutureword1, 1, sum)
+  
+languagecues <- cbind(#functionwordcount1, 
+  pronouncount1, negatecount1, numbercount1, #posemotioncount1, negemotioncount1,      
+                      angerwordcount1, 
+                       sadwordcount1, discrepancycount1, focusfuturecount1, #focuspastcount1, 
+                      focuspresentcount1)
+
+
+finalword <- cbind(new_words, languagecues)
+  #w_per_thousand<-(1000*finalword/new_word_count)
+  #train<-as.matrix(w_per_thousand)
+  
+train <- as.matrix(1000* finalword/new_word_count)
+train <- cbind (train, new_word_count) ##Train matrix include all 3000 words, linguistic categories, and log(word count)##
+```
+
+```{r}
+##Standardize##
+scaled.train <- scale(train, center = TRUE, scale = TRUE)
+colMeans(scaled.train)
+apply(scaled.train, 2, sd)
+```
+
+
+```{r}
+##calculate word frequency in every 1000 words for each article
+w_per_thousand<-(1000*new_words/new_word_count) #word frequency/1000 words
+
+fake_news<-subset(w_per_thousand,new_label==1)
+real_news<-subset(w_per_thousand,new_label==0)
+dim(fake_news)
+dim(real_news)
+
+head(sort((colMeans(fake_news)-colMeans(real_news)),decreasing = T),50) 
+tail(sort((colMeans(fake_news)-colMeans(real_news)),decreasing = T),50) 
+
+```
+
+# train a logistic regression model using lasso
+```{r}
+library(glmnet)
+lasso <-glmnet(x = train, y = new_label, family = 'binomial')
+print(lasso)
+```
+
+
+```{r}
+##choose the optimal lamda using cross validation
+set.seed(123)
+cvfit <- cv.glmnet(x = train, y = new_label, family='binomial', nfolds=20, type.measure="class" )
+
+cvfit$lambda
+
+##find the lambda that maximizes accuracy 
+lmin <- cvfit$lambda.min 
+lmin 
+
+coef_lasso<-coef(cvfit, s = lmin) #coefficients when lambda is optimal
+
+coef_lasso <- round(coef_lasso[which(coef_lasso[,] !=0),] , 5) #list the words chosen by lasso as predictors
+coef_lasso <- sort(coef_lasso, decreasing=T)
+coef_lasso
+
+
+
+###TRY different lambda##
+
+coef_lasso<-coef(cvfit, s = 0.060039572) #coefficients when lambda is optimal
+
+
+coef_lasso <- round(coef_lasso[which(coef_lasso[,] !=0),] , 5) #list the words chosen by lasso as predictors
+coef_lasso <- sort(coef_lasso, decreasing=T)
+coef_lasso
+```
+
+#In sample prediction
+```{r}
+#in sample accuracy
+cvlassoClass_in <- predict(lasso, newx = train, s = lmin, type = "class")
+table_class_in  <-table(cvlassoClass_in, new_label)
+table_class_in
+sum(diag(table_class_in))/sum(table_class_in)
+```
+
+```{r}
+train <- as.data.frame(train)
+mean((train$focuspresentcount)[which(new_label ==1)])
+mean((train$focuspresentcount)[which(new_label ==0)])
+sd((train$focuspresentcount)[which(new_label ==1)])
+sd((train$focuspresentcount)[which(new_label ==0)])
+
+
+mean((train$negatecount)[which(new_label ==1)])
+mean((train$negatecount)[which(new_label ==0)])
+sd((train$negatecount)[which(new_label ==1)])
+sd((train$negatecount)[which(new_label ==0)])
+
+mean((train$new_word_count)[which(new_label ==1)])
+mean((train$new_word_count)[which(new_label ==0)])
+sd((train$new_word_count)[which(new_label ==1)])
+sd((train$new_word_count)[which(new_label ==0)])
+
+mean((train$trump)[which(new_label ==1)])
+mean((train$trump)[which(new_label ==0)])
+sd((train$trump)[which(new_label ==1)])
+sd((train$trump)[which(new_label ==0)])
+
+mean((train$mr)[which(new_label ==1)])
+mean((train$mr)[which(new_label ==0)])
+sd((train$mr)[which(new_label ==1)])
+sd((train$mr)[which(new_label ==0)])
+
+mean((train$success)[which(new_label ==1)])
+mean((train$success)[which(new_label ==0)])
+sd((train$success)[which(new_label ==1)])
+sd((train$success)[which(new_label ==0)])
+
+
+mean((train$largely)[which(new_label ==1)])
+mean((train$largely)[which(new_label ==0)])
+sd((train$largely)[which(new_label ==1)])
+sd((train$largely)[which(new_label ==0)])
+
+mean((train$communities)[which(new_label ==1)])
+mean((train$communities)[which(new_label ==0)])
+sd((train$communities)[which(new_label ==1)])
+sd((train$communities)[which(new_label ==0)])
+
+mean((train$editor)[which(new_label ==1)])
+mean((train$editor)[which(new_label ==0)])
+sd((train$editor)[which(new_label ==1)])
+sd((train$editor)[which(new_label ==0)])
+
+mean((train$times)[which(new_label ==1)])
+mean((train$times)[which(new_label ==0)])
+sd((train$times)[which(new_label ==1)])
+sd((train$times)[which(new_label ==0)])
+
+
+mean((train$colarossi)[which(new_label ==1)])
+mean((train$colarossi)[which(new_label ==0)])
+sd((train$colarossi)[which(new_label ==1)])
+sd((train$colarossi)[which(new_label ==0)])
+
+
+mean((train$is)[which(new_label ==1)])
+mean((train$is)[which(new_label ==0)])
+sd((train$is)[which(new_label ==1)])
+sd((train$is)[which(new_label ==0)])
+
+mean((train$politics)[which(new_label ==1)])
+mean((train$politics)[which(new_label ==0)])
+sd((train$politics)[which(new_label ==1)])
+sd((train$politics)[which(new_label ==0)])
+
+
+mean((train$moral)[which(new_label ==1)])
+mean((train$moral)[which(new_label ==0)])
+sd((train$moral)[which(new_label ==1)])
+sd((train$moral)[which(new_label ==0)])
+
+
+
+mean((train$koch)[which(new_label ==1)])
+mean((train$koch)[which(new_label ==0)])
+sd((train$koch)[which(new_label ==1)])
+sd((train$koch)[which(new_label ==0)])
+
+
+
+mean((train$recent)[which(new_label ==1)])
+mean((train$recent)[which(new_label ==0)])
+sd((train$recent)[which(new_label ==1)])
+sd((train$recent)[which(new_label ==0)])
+```
+
+
+#Out of sample prediction
+```{r}
+load("/Users/mufanluo/Dropbox/PhDStanford/PhDCoursework/POLISCI355BMachineLearning/FinalStuff.rdata")
+head(results[[1]][2])
+articles_test <- results[[1]][2]
+
+terms_test <- results[[2]]
+##Create heldout dataset##
+test_label <-terms_test$Fake
+test_words<- terms_test[,-1]
+
+index2 = grep('X', names(test_words))
+test_words2 <- subset(test_words, select = -c(index, t, follow, posts, q, ed, op, times, colarossi)) ##ORIGINAL DATASET DOES NOT INCLUDE q, ed
+dim(test_words2)
+```
+
+```{r}
+### create new test matrix###
+
+test_word3 <- subset(test_words2,select = -c(an,a,the))
+
+functionword2 <- subset(test_word3, select = functionword)
+functionwordcount2 <- apply(functionword2, 1, sum)  
+pronounword2 <- subset(test_word3, select = pronoun)
+pronouncount2 <- apply(pronounword2, 1, sum) 
+
+negateword2 <-subset(test_word3, select = negate)
+negatecount2 <- apply(negateword2,1,sum) 
+
+numberword2 <- subset(test_word3, select = number)
+numbercount2 <- apply(numberword2, 1, sum) 
+
+posemotionword2 <- subset(test_word3, select = posemotion)
+posemotioncount2 <- apply(posemotionword2, 1, sum) 
+
+negemotionword2 <- subset(test_word3, select = negemotion)
+negemotioncount2 <- apply(negemotionword2, 1, sum) 
+
+angerword2 <- subset(test_word3, select = anger)
+angerwordcount2 <- apply(angerword2, 1, sum) 
+
+sadword2 <- subset(test_word3, select = sad)
+sadwordcount2 <- apply(sadword2, 1, sum) 
+
+discrepancyword2 <- subset(test_word3, select = discrepancy)
+discrepancycount2 <- apply(discrepancyword2, 1, sum) 
+
+focuspastword2 <- subset(test_word3, select = focuspast)
+focuspastcount2 <- apply(focuspastword2, 1, sum) 
+
+focuspresentword2 <- subset(test_word3, select = focuspresent)
+focuspresentcount2 <- apply(focuspresentword2, 1, sum) 
+
+focusfutureword2 <- subset(test_word3, select = focusfuture)
+focusfuturecount2 <- apply(focusfutureword2, 1, sum)
+
+
+languagecues2 <- cbind(functionwordcount2, pronouncount2, negatecount2, numbercount2, posemotioncount2, negemotioncount2, angerwordcount2, 
+                       sadwordcount2, discrepancycount2, focusfuturecount2, focuspastcount2, focuspresentcount2)
+test_word3 <- cbind(test_words3, languagecues2)
+  #w_per_thousand<-(1000*finalword/new_word_count)
+  #train<-as.matrix(w_per_thousand)
+
+test_word_count<-stri_count_words(test_word3)
+  
+test <- as.matrix(1000* test_word3/test_word_count)
+test_term <- cbind (test, test_word_count) ##Train matrix include all 3000 words, linguistic categories, and log(word count)##
+class(test_term)
+```
+
+```{r}
+#lasso2 <- glmnet(x = test_term, y = test_label, family = 'binomial')
+cvlassoClass_out <- predict(lasso, newx = test_term, s = lmin, type = "class")
+
+tableout <- table(cvlassoClass_out, test_label)
+tableout
+sum(diag(tableout))/sum(tableout)
+```
+
+
